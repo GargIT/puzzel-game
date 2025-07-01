@@ -1,0 +1,16 @@
+# ESLint and Prettier for React + TypeScript + MUI
+
+# Core
+eslint
+prettier
+
+# React
+eslint-plugin-react
+eslint-plugin-react-hooks
+
+# TypeScript
+@typescript-eslint/eslint-plugin
+@typescript-eslint/parser
+
+# Prettier config for ESLint
+eslint-config-prettier
