@@ -39,115 +39,7 @@ const StatisticsPage: React.FC<StatisticsPageProps> = ({ onBack, overlay }) => {
     forceUpdate();
   };
 
-  return overlay ? (
-    <Box
-      sx={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: 1400,
-        background: "rgba(0,0,0,0.10)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        overflowY: "auto",
-      }}
-    >
-      <Stack
-        direction="column"
-        alignItems="center"
-        spacing={0}
-        sx={{
-          background: "var(--mui-background, #fff)",
-          borderRadius: 2,
-          boxShadow: "0 4px 32px rgba(0,0,0,0.10)",
-          width: "100%",
-          maxWidth: "min(100vw, 48vh)",
-          height: "100vh",
-          margin: "0 auto",
-          padding: 0,
-          boxSizing: "border-box",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
-        <AppBar
-          position="sticky"
-          color="default"
-          elevation={1}
-          sx={{ zIndex: 210 }}
-        >
-          <Toolbar>
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="back"
-              onClick={onBack}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography
-              variant="h6"
-              sx={{ flexGrow: 1, textAlign: "center", fontWeight: 700 }}
-            >
-              Statistics
-            </Typography>
-            <IconButton
-              edge="end"
-              color="inherit"
-              aria-label="delete"
-              onClick={handleDelete}
-            >
-              <DeleteIcon />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-        <Grid container spacing={2} sx={{ p: 0, width: "100%" }}>
-          {boardSizes.map((size) => {
-            const stats: GameStats = getStats(size);
-            if (stats.totalGames === 0) return null;
-            return (
-              <Grid size={{ xs: 12 }} key={size}>
-                <Card sx={{ width: "100%" }}>
-                  <CardHeader
-                    title={`${size} x ${size}`}
-                    sx={{ textAlign: "center", fontWeight: 700 }}
-                  />
-                  <CardContent>
-                    <div>
-                      Total games: <b>{stats.totalGames}</b>
-                    </div>
-                    <div>
-                      Min moves: <b>{stats.minMoves}</b>
-                    </div>
-                    <div>
-                      Max moves: <b>{stats.maxMoves}</b>
-                    </div>
-                    <div>
-                      Avg moves: <b>{stats.avgMoves.toFixed(1)}</b>
-                    </div>
-                    <div>
-                      Min time: <b>{stats.minTime}s</b>
-                    </div>
-                    <div>
-                      Max time: <b>{stats.maxTime}s</b>
-                    </div>
-                    <div>
-                      Avg time: <b>{stats.avgTime.toFixed(1)}s</b>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
-      </Stack>
-    </Box>
-  ) : (
+  const content = (
     <Stack
       direction="column"
       alignItems="center"
@@ -238,6 +130,29 @@ const StatisticsPage: React.FC<StatisticsPageProps> = ({ onBack, overlay }) => {
         })}
       </Grid>
     </Stack>
+  );
+
+  return overlay ? (
+    <Box
+      sx={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 1400,
+        background: "rgba(0,0,0,0.10)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflowY: "auto",
+      }}
+    >
+      {content}
+    </Box>
+  ) : (
+    content
   );
 };
 
