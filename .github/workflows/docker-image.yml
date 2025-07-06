@@ -28,4 +28,4 @@ jobs:
       with:
         context: .
         push: true
-        tags: ghcr.io/${{ toLower(github.repository) }}/puzzelgame:latest
+        tags: ghcr.io/${{ lower(github.repository) }}/puzzelgame:latest
