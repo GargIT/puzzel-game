@@ -22,10 +22,12 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.PERSONAL_TOKEN }}
-    
+    - name: Set lowercase repository name
+      id: repo
+      run: echo "REPO_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
         context: .
         push: true
-        tags: ghcr.io/gargit/puzzelgame:latest
+        tags: ghcr.io/${{ env.REPO_LC }}/puzzelgame:latest
