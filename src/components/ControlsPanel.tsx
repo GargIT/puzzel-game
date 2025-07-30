@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import Paper from "@mui/material/Paper";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -17,51 +17,59 @@ function formatTime(seconds: number) {
   return `${m}:${s}`;
 }
 
-const ControlsPanel: React.FC<ControlsPanelProps> = ({ timer, moveCount }) => (
-  <Paper
-    elevation={2}
-    sx={{
+const ControlsPanel: React.FC<ControlsPanelProps> = ({ timer, moveCount }) => {
+  // Memoize formatted time to avoid recalculation on every render
+  const formattedTime = useMemo(() => formatTime(timer), [timer]);
+
+  // Memoize styles
+  const paperStyles = useMemo(
+    () => ({
       p: 2,
       mb: 2,
       width: "100%",
       maxWidth: "min(100vw - 16px, 48vh - 16px)",
       mx: "auto",
-    }}
-  >
-    <Stack
-      direction="row"
-      spacing={4}
-      justifyContent="center"
-      alignItems="center"
-    >
-      <Box textAlign="center" flex={1} minWidth={0}>
-        <Typography
-          variant="h4"
-          component="div"
-          fontWeight={700}
-          data-testid="timer-display"
-        >
-          {formatTime(timer)}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          time
-        </Typography>
-      </Box>
-      <Box textAlign="center" flex={1} minWidth={0}>
-        <Typography
-          variant="h4"
-          component="div"
-          fontWeight={700}
-          data-testid="move-display"
-        >
-          {moveCount}
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          moves
-        </Typography>
-      </Box>
-    </Stack>
-  </Paper>
-);
+    }),
+    []
+  );
 
-export default ControlsPanel;
+  return (
+    <Paper elevation={2} sx={paperStyles}>
+      <Stack
+        direction="row"
+        spacing={4}
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Box textAlign="center" flex={1} minWidth={0}>
+          <Typography
+            variant="h4"
+            component="div"
+            fontWeight={700}
+            data-testid="timer-display"
+          >
+            {formattedTime}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            time
+          </Typography>
+        </Box>
+        <Box textAlign="center" flex={1} minWidth={0}>
+          <Typography
+            variant="h4"
+            component="div"
+            fontWeight={700}
+            data-testid="move-display"
+          >
+            {moveCount}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            moves
+          </Typography>
+        </Box>
+      </Stack>
+    </Paper>
+  );
+};
+
+export default React.memo(ControlsPanel);

@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import useMediaQuery from "@mui/material/useMediaQuery";
@@ -21,6 +27,16 @@ import { useStats } from "./services/useStats";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
+// Constants to avoid recreation
+const SAVE_INTERVAL = 5000;
+const TIMER_INTERVAL = 1000;
+
+// Memoized components to prevent unnecessary re-renders
+const MemoizedBoard = React.memo(Board);
+const MemoizedControlsPanel = React.memo(ControlsPanel);
+const MemoizedAppToolbar = React.memo(AppToolbar);
+const MemoizedBoardSizeTabs = React.memo(BoardSizeTabs);
+
 const App: React.FC = () => {
   const [board, setBoard] = useState<(number | null)[]>([]);
   const [boardSize, setBoardSize] = useState(4);
@@ -35,6 +51,54 @@ const App: React.FC = () => {
   const [showStatistics, setShowStatistics] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const stats = useStats(boardSize);
+
+  // Memoize expensive calculations
+  const isPaused = useMemo(
+    () => !isTimerRunning && moveCount > 0 && !isGameWon,
+    [isTimerRunning, moveCount, isGameWon]
+  );
+
+  // Memoize empty index calculation to avoid repeated indexOf calls
+  const emptyIndex = useMemo(() => board.indexOf(null), [board]);
+
+  // Optimize inline styles with useMemo
+  const containerStyles = useMemo(
+    () => ({
+      width: "100%",
+      minHeight: "100vh",
+      background: "var(--mui-background, #fff)",
+    }),
+    []
+  );
+
+  const boardContainerStyles = useMemo(
+    () => ({
+      width: "100%",
+      background: "var(--mui-background, #fff)",
+      borderRadius: 2,
+      margin: "16px 0",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      overflow: "visible",
+    }),
+    []
+  );
+
+  const loadingStyles = useMemo(
+    () => ({
+      width: "100%",
+      background: "var(--mui-background, #fff)",
+      borderRadius: 2,
+      margin: "16px 0",
+      padding: "40px",
+      minHeight: "400px",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+    }),
+    []
+  );
 
   // Load saved game state on component mount
   useEffect(() => {
@@ -76,12 +140,36 @@ const App: React.FC = () => {
     clearGameState();
   }, []);
 
+  // Memoize callback functions to prevent unnecessary re-renders
+  const handleDrawerClose = useCallback(() => setDrawerOpen(false), []);
+
+  const handleStatisticsClick = useCallback(() => {
+    setShowStatistics(true);
+    setDrawerOpen(false);
+  }, []);
+
+  const handleMenuClick = useCallback(() => setDrawerOpen(true), []);
+
+  const handleResetClick = useCallback(
+    () => initializeGame(boardSize),
+    [initializeGame, boardSize]
+  );
+
+  const handleStatisticsBack = useCallback(() => setShowStatistics(false), []);
+
+  // Memoize togglePause function
+  const togglePause = useCallback(() => {
+    if (moveCount > 0 && !isGameWon) {
+      setIsTimerRunning(!isTimerRunning);
+    }
+  }, [moveCount, isGameWon, isTimerRunning]);
+
   // Timer effect
   useEffect(() => {
     if (!isTimerRunning) return;
     const interval = setInterval(() => {
       setTimer((prev) => prev + 1);
-    }, 1000);
+    }, TIMER_INTERVAL);
     return () => clearInterval(interval);
   }, [isTimerRunning]);
 
@@ -98,7 +186,7 @@ const App: React.FC = () => {
         isTimerRunning: true,
         gameId,
       });
-    }, 5000); // Save every 5 seconds
+    }, SAVE_INTERVAL); // Save every 5 seconds
 
     return () => clearInterval(saveInterval);
   }, [isTimerRunning, board, boardSize, moveCount, timer, gameId]);
@@ -117,50 +205,45 @@ const App: React.FC = () => {
     });
   }, [board, moveCount, boardSize, timer, isTimerRunning, gameId, isGameWon]);
 
-  const startTimer = () => setIsTimerRunning(true);
+  // Memoize moveTile function to prevent unnecessary re-renders
+  const memoizedMoveTile = useCallback(
+    (index: number) => {
+      const move = getMoveDirection(index, emptyIndex, boardSize);
+      if (!move) return;
 
-  const togglePause = () => {
-    if (moveCount > 0 && !isGameWon) {
-      setIsTimerRunning(!isTimerRunning);
-    }
-  };
+      const newBoard = [...board];
+      [newBoard[emptyIndex], newBoard[index]] = [
+        newBoard[index],
+        newBoard[emptyIndex],
+      ];
+      const newMoveCount = moveCount + 1;
 
-  const isMovable = (index: number) => {
-    const emptyIndex = board.indexOf(null);
-    return !!getMoveDirection(index, emptyIndex, boardSize);
-  };
+      setBoard(newBoard);
+      setMoveCount(newMoveCount);
+      if (!isGameWon && !isTimerRunning) setIsTimerRunning(true);
 
-  const moveTile = (index: number) => {
-    if (!isMovable(index)) return;
-    const emptyIndex = board.indexOf(null);
-    const move = getMoveDirection(index, emptyIndex, boardSize);
-    if (!move) return;
-    const newBoard = [...board];
-    [newBoard[emptyIndex], newBoard[index]] = [
-      newBoard[index],
-      newBoard[emptyIndex],
-    ];
-    const newMoveCount = moveCount + 1;
-
-    setBoard(newBoard);
-    setMoveCount(newMoveCount);
-    if (!isGameWon && !isTimerRunning) startTimer();
-
-    checkWin(newBoard);
-  };
-
-  const checkWin = (currentBoard: (number | null)[]) => {
-    const won = currentBoard
-      .slice(0, boardSize * boardSize - 1)
-      .every((val, idx) => val === idx + 1);
-    if (won) {
-      setIsGameWon(true);
-      setIsTimerRunning(false);
-      stats.update(moveCount + 1, timer); // Use moveCount + 1 since state hasn't updated yet
-      // Clear saved state when game is completed
-      clearGameState();
-    }
-  };
+      // Check win condition
+      const won = newBoard
+        .slice(0, boardSize * boardSize - 1)
+        .every((val, idx) => val === idx + 1);
+      if (won) {
+        setIsGameWon(true);
+        setIsTimerRunning(false);
+        stats.update(newMoveCount, timer);
+        clearGameState();
+      }
+    },
+    [
+      board,
+      emptyIndex,
+      boardSize,
+      moveCount,
+      isGameWon,
+      isTimerRunning,
+      timer,
+      stats,
+    ]
+  );
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -194,7 +277,7 @@ const App: React.FC = () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [board, boardSize, moveCount, timer, isTimerRunning, gameId]);
 
-  // Theme setup
+  // Theme setup - memoize theme creation
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
   const [mode, setMode] = useState<"light" | "dark">(
     prefersDarkMode ? "dark" : "light"
@@ -202,12 +285,17 @@ const App: React.FC = () => {
   useEffect(() => {
     setMode(prefersDarkMode ? "dark" : "light");
   }, [prefersDarkMode]);
-  const theme = createTheme({
-    palette: { mode },
-    components: {
-      MuiAppBar: { styleOverrides: { root: { background: "inherit" } } },
-    },
-  });
+
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: { mode },
+        components: {
+          MuiAppBar: { styleOverrides: { root: { background: "inherit" } } },
+        },
+      }),
+    [mode]
+  );
 
   // Set CSS variables for theme colors
   useEffect(() => {
@@ -247,78 +335,48 @@ const App: React.FC = () => {
       <CssBaseline />
       <AppDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onStatisticsClick={() => {
-          setShowStatistics(true);
-          setDrawerOpen(false);
-        }}
+        onClose={handleDrawerClose}
+        onStatisticsClick={handleStatisticsClick}
       />
       <Stack
         className="responsive-container"
         direction="column"
         alignItems="center"
         justifyContent="flex-start"
-        sx={{
-          width: "100%",
-          minHeight: "100vh",
-          background: "var(--mui-background, #fff)",
-        }}
+        sx={containerStyles}
       >
-        <AppToolbar
-          onMenuClick={() => setDrawerOpen(true)}
-          onReset={() => initializeGame(boardSize)}
+        <MemoizedAppToolbar
+          onMenuClick={handleMenuClick}
+          onReset={handleResetClick}
           onPause={togglePause}
-          isPaused={!isTimerRunning && moveCount > 0 && !isGameWon}
+          isPaused={isPaused}
         />
-        <BoardSizeTabs
+        <MemoizedBoardSizeTabs
           boardSize={boardSize}
-          onChange={(size) => initializeGame(size)}
+          onChange={initializeGame}
         />
-        <Stack
-          direction="column"
-          alignItems="center"
-          sx={{
-            width: "100%",
-            background: "var(--mui-background, #fff)",
-            borderRadius: 2,
-            margin: "16px 0",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            overflow: "visible",
-          }}
-        >
+        <Stack direction="column" alignItems="center" sx={boardContainerStyles}>
           {isLoading ? (
             // Show loading state to prevent layout shift
-            <Stack
-              direction="column"
-              alignItems="center"
-              sx={{
-                width: "100%",
-                background: "var(--mui-background, #fff)",
-                borderRadius: 2,
-                margin: "16px 0",
-                padding: "40px",
-                minHeight: "400px",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
+            <Stack direction="column" alignItems="center" sx={loadingStyles}>
               <Typography variant="h6" color="text.secondary">
                 Loading game...
               </Typography>
             </Stack>
           ) : (
             <>
-              <Board board={board} boardSize={boardSize} moveTile={moveTile} />
-              <ControlsPanel timer={timer} moveCount={moveCount} />
+              <MemoizedBoard
+                board={board}
+                boardSize={boardSize}
+                moveTile={memoizedMoveTile}
+              />
+              <MemoizedControlsPanel timer={timer} moveCount={moveCount} />
             </>
           )}
         </Stack>
       </Stack>
       {showStatistics && (
-        <StatisticsPage onBack={() => setShowStatistics(false)} overlay />
+        <StatisticsPage onBack={handleStatisticsBack} overlay />
       )}
     </ThemeProvider>
   );

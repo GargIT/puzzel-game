@@ -81,7 +81,7 @@ export function clearGameState(): void {
  * Generate a unique game ID
  */
 export function generateGameId(): string {
-  return `game-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `game-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
